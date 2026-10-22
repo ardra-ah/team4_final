@@ -1,0 +1,13 @@
+# Postgres is hosted on Neon (set DATABASE_URL in .env), so no local Postgres container is needed.
+# Chroma runs as an optional server; the pipeline also works with local persistent storage.
+
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/data
+
+volumes:
+  chroma_data:

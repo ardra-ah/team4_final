@@ -1,0 +1,29 @@
+# Secrets: never commit real keys or passwords. Only .env.example is shared.
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local runtime data (created when the app runs)
+data/chroma/
+data/uploads/
+outputs/
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.tmp.png

@@ -1,0 +1,150 @@
+[
+  {
+    "claim_id": "CLM-2026-0001",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0002",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0003",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0004",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0005",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0006",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0007",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0008",
+    "scenario": "clean",
+    "expected_path": "approval",
+    "expected_decision": "APPROVED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0009",
+    "scenario": "missing_field",
+    "expected_path": "clarification",
+    "expected_decision": "PENDING_DOCUMENTS",
+    "expected_missing_fields": [
+      "diagnosis_code"
+    ]
+  },
+  {
+    "claim_id": "CLM-2026-0010",
+    "scenario": "missing_field",
+    "expected_path": "clarification",
+    "expected_decision": "PENDING_DOCUMENTS",
+    "expected_missing_fields": [
+      "diagnosis_code"
+    ]
+  },
+  {
+    "claim_id": "CLM-2026-0011",
+    "scenario": "missing_field",
+    "expected_path": "clarification",
+    "expected_decision": "PENDING_DOCUMENTS",
+    "expected_missing_fields": [
+      "diagnosis_code"
+    ]
+  },
+  {
+    "claim_id": "CLM-2026-0012",
+    "scenario": "missing_field",
+    "expected_path": "clarification",
+    "expected_decision": "PENDING_DOCUMENTS",
+    "expected_missing_fields": [
+      "diagnosis_code"
+    ]
+  },
+  {
+    "claim_id": "CLM-2026-0013",
+    "scenario": "policy_violation",
+    "expected_path": "rejection_review",
+    "expected_decision": "REJECTED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0014",
+    "scenario": "policy_violation",
+    "expected_path": "rejection_review",
+    "expected_decision": "REJECTED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0015",
+    "scenario": "policy_violation",
+    "expected_path": "rejection_review",
+    "expected_decision": "REJECTED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0016",
+    "scenario": "policy_violation",
+    "expected_path": "rejection_review",
+    "expected_decision": "REJECTED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0017",
+    "scenario": "duplicate",
+    "expected_path": "investigation",
+    "expected_decision": "ESCALATED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0018",
+    "scenario": "duplicate",
+    "expected_path": "investigation",
+    "expected_decision": "ESCALATED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0019",
+    "scenario": "high_fraud",
+    "expected_path": "investigation",
+    "expected_decision": "ESCALATED",
+    "expected_missing_fields": []
+  },
+  {
+    "claim_id": "CLM-2026-0020",
+    "scenario": "high_fraud",
+    "expected_path": "investigation",
+    "expected_decision": "ESCALATED",
+    "expected_missing_fields": []
+  }
+]
