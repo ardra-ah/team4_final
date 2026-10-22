@@ -40,7 +40,8 @@ LABEL_TO_FIELD = {
 }
 
 _LINE = re.compile(r"^\s*([A-Za-z ]+?)\s*:\s*(.+?)\s*$", re.MULTILINE)
-_AMOUNT = re.compile(r"(\d[\d,]*\.\d{2})")
+_AMOUNT = re.compile(r"(-?\d[\d,]*\.\d{2})")
+_CURRENCY = re.compile(r"\b([A-Z]{3})\b")
 _DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 _ICD = re.compile(r"\b([A-Z]\d{2}(?:\.\w{1,4})?)\b")
 _CPT = re.compile(r"\b(\d{5})\b")
@@ -65,17 +66,33 @@ def _parse_pairs(raw_text: str) -> Dict[str, str]:
 
 
 def _amount(value: Optional[str]) -> Optional[float]:
+    """A claim amount must be positive. Zero or negative counts as missing."""
     if not value:
         return None
     m = _AMOUNT.search(value)
-    return float(m.group(1).replace(",", "")) if m else None
+    if not m:
+        return None
+    amount = float(m.group(1).replace(",", ""))
+    return amount if amount > 0 else None
+
+
+def _currency(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    m = _CURRENCY.search(value)
+    return m.group(1) if m else None
 
 
 def _date(value: Optional[str]) -> Optional[date]:
     if not value:
         return None
     m = _DATE.search(value)
-    return date.fromisoformat(m.group(1)) if m else None
+    if not m:
+        return None
+    try:
+        return date.fromisoformat(m.group(1))
+    except ValueError:  # e.g. 2026-02-31 is not a real date; treat as missing
+        return None
 
 
 def extract_claim(raw_text: str, source_format: str = "text_pdf") -> ClaimExtraction:
@@ -108,6 +125,7 @@ def extract_claim(raw_text: str, source_format: str = "text_pdf") -> ClaimExtrac
         "procedure_code": procedure,
         "billed_amount": _amount(pairs.get("billed_amount")),
         "claimed_amount": _amount(pairs.get("claimed_amount")),
+        "currency": _currency(pairs.get("billed_amount")) or _currency(pairs.get("claimed_amount")) or "USD",
         "documents_attached": documents,
         "source_format": source_format,
     }

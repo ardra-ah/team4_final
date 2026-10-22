@@ -47,8 +47,7 @@ def test_identical_file_is_refused_while_first_is_in_review(client):
 
     again = _upload(client, "clean")
     assert again.status_code == 409
-    assert first["run_id"] in again.json()["detail"]
-    assert "already in review" in again.json()["detail"]
+    assert "already being reviewed" in again.json()["detail"]
     assert len(client.get("/claims").json()) == 1
 
 

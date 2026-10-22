@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { decideClaim, deleteClaim, listClaims, resubmitClaim, uploadClaim } from "./api";
+import { ApiError, decideClaim, deleteClaim, listClaims, resubmitClaim, uploadClaim } from "./api";
 import type { ClaimSummary, Decision } from "./types";
 
 type Tone = "success" | "danger" | "warning" | "neutral" | "info";
@@ -89,7 +89,12 @@ function Icon({ name }: { name: IconName }) {
 }
 
 function messageOf(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  return e instanceof Error ? e.message : "Something went wrong. Please try again.";
+}
+
+/** A duplicate or "cannot do this right now" message is a warning, not a failure. */
+function toneOf(e: unknown): Tone {
+  return e instanceof ApiError && e.status === 409 ? "warning" : "danger";
 }
 
 function formatDate(iso: string): string {
@@ -159,9 +164,9 @@ export default function App() {
       setView("all");
       setQuery("");
       await refresh();
-      pushToast("success", "Claim uploaded and processed.");
+      pushToast("success", "Claim uploaded and checked.");
     } catch (e) {
-      pushToast("danger", messageOf(e));
+      pushToast(toneOf(e), messageOf(e));
     } finally {
       setUploading(false);
     }
@@ -174,9 +179,9 @@ export default function App() {
       setClaims((prev) => prev.filter((c) => c.run_id !== claim.run_id));
       if (selectedId === claim.run_id) setSelectedId(null);
       setConfirmDelete(null);
-      pushToast("success", "Claim deleted from history.");
+      pushToast("success", "Claim removed.");
     } catch (e) {
-      pushToast("danger", messageOf(e));
+      pushToast(toneOf(e), messageOf(e));
     } finally {
       setDeleting(false);
     }
@@ -310,14 +315,14 @@ export default function App() {
                 claim={selected}
                 onDecided={(updated) => {
                   setClaims((prev) => prev.map((c) => (c.run_id === updated.run_id ? updated : c)));
-                  pushToast("success", "Decision recorded in the audit trail.");
+                  pushToast("success", "Decision saved.");
                 }}
-                onError={(msg) => pushToast("danger", msg)}
+                onError={(e) => pushToast(toneOf(e), messageOf(e))}
                 onNavigate={(id) => setSelectedId(id)}
                 onResubmitted={(newId) => {
                   refresh();
                   setSelectedId(newId);
-                  pushToast("success", "Corrected documents uploaded as a new claim.");
+                  pushToast("success", "Corrected claim uploaded and checked.");
                 }}
                 onDelete={() => setConfirmDelete(selected)}
               />
@@ -445,7 +450,7 @@ function ClaimDetail({
 }: {
   claim: ClaimSummary;
   onDecided: (c: ClaimSummary) => void;
-  onError: (msg: string) => void;
+  onError: (e: unknown) => void;
   onNavigate: (runId: string) => void;
   onResubmitted: (newRunId: string) => void;
   onDelete: () => void;
@@ -467,7 +472,7 @@ function ClaimDetail({
       onDecided(updated);
       setNote("");
     } catch (e) {
-      onError(messageOf(e));
+      onError(e);
     } finally {
       setSaving(false);
     }
@@ -607,7 +612,7 @@ function ResubmitSection({
 }: {
   runId: string;
   onSubmitted: (newRunId: string) => void;
-  onError: (msg: string) => void;
+  onError: (e: unknown) => void;
 }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -633,7 +638,7 @@ function ResubmitSection({
               const created = await resubmitClaim(runId, file);
               onSubmitted(created.run_id);
             } catch (err) {
-              onError(messageOf(err));
+              onError(err);
             } finally {
               setBusy(false);
             }

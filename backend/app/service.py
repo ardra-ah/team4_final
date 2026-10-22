@@ -255,8 +255,7 @@ class ClaimService:
         open_run = next((r["run_id"] for r in identical if self._is_open(r["run_id"])), None)
         if open_run:
             raise DuplicateUploadError(
-                f"This document is already in review (run {open_run}). "
-                "Open that claim instead of uploading it again."
+                "This file is already being reviewed. Open the existing claim from the list instead of uploading it again."
             )
 
         history = list(self.history_loader())
@@ -296,18 +295,18 @@ class ClaimService:
         """Submit corrected or missing documents for a claim where documents were requested."""
         parent = self.summary(parent_run_id)  # raises KeyError if unknown
         if parent["final_decision"] != "PENDING_DOCUMENTS":
-            raise ValueError("Only claims where documents were requested can be resubmitted.")
+            raise ValueError("Corrected documents can only be uploaded for claims that asked for them.")
         if parent["resubmitted_as"]:
-            raise ValueError("This claim has already been resubmitted.")
+            raise ValueError("Corrected documents have already been uploaded for this claim.")
         return self.submit(filename, content, parent_run_id=parent_run_id)
 
     def decide(self, run_id: str, decision: Decision, note: str = "") -> dict:
         run = self._get_run(run_id)
         current = self.summary(run_id)
         if current["final_decision"]:
-            raise ValueError("claim already has a final decision")
+            raise ValueError("This claim already has a decision.")
         if current["status"] != "awaiting_review":
-            raise ValueError("claim is not waiting for review")
+            raise ValueError("This claim is not waiting for a decision yet.")
 
         if run["state"] is not None:
             run["state"] = resume_claim(self.graph, run_id, decision.value, note)

@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from agents import rules  # noqa: E402
 from agents.extraction import extract_claim  # noqa: E402
-from agents.llm import explain  # noqa: E402
+from agents.llm import explain, llm_enabled  # noqa: E402
 from agents.ocr import extract_text  # noqa: E402
 from app.schemas import Decision  # noqa: E402
 
@@ -51,6 +51,7 @@ class ClaimState(TypedDict, total=False):
     policy_evidence: List[str]
     duplicate_of: List[str]
     abnormal_reason: Optional[str]
+    currency_reason: Optional[str]
     risk_level: str
     route: str
     investigation_report: Optional[str]
@@ -85,7 +86,10 @@ def ocr_node(state: ClaimState) -> dict:
             if attempt < MAX_OCR_ATTEMPTS:
                 time.sleep(backoff * (2 ** (attempt - 1)))
     return {
-        "error": f"OCR failed after {MAX_OCR_ATTEMPTS} attempts: {last_error}",
+        "error": (
+            f"We could not read this PDF after {MAX_OCR_ATTEMPTS} tries. "
+            "It may be damaged, locked with a password, or blank. Please check the file and upload it again."
+        ),
         "audit": [f"ocr: failed after {MAX_OCR_ATTEMPTS} attempts"],
     }
 
@@ -96,16 +100,25 @@ def extract_node(state: ClaimState) -> dict:
     return {"extraction": data, "audit": [f"extract: missing={data['missing_fields']}"]}
 
 
+def _policy_evidence(reason: str, policy_store: str) -> str:
+    """Find the policy section for one reason. Never raises: a missing store is a note for the reviewer."""
+    try:
+        from agents.policy_rag import query
+
+        hits = query(reason, policy_store, k=1)
+    except Exception:  # noqa: BLE001 - the policy store is supporting evidence only
+        return "Policy text could not be searched. A reviewer should check the policy manually."
+    if not hits:
+        return "No matching policy section was found. A reviewer should check the policy manually."
+    return f"Section {hits[0]['section']}: {hits[0]['title']}"
+
+
 def policy_node(state: ClaimState) -> dict:
     ext = _with_dates(state["extraction"])
     valid, reasons = rules.policy_check(ext)
     evidence: List[str] = []
     if reasons and state.get("policy_store"):
-        from agents.policy_rag import query
-
-        for reason in reasons:
-            hit = query(reason, state["policy_store"], k=1)[0]
-            evidence.append(f"Section {hit['section']}: {hit['title']}")
+        evidence = [_policy_evidence(reason, state["policy_store"]) for reason in reasons]
     return {
         "policy_valid": valid,
         "policy_reasons": reasons,
@@ -118,10 +131,12 @@ def fraud_node(state: ClaimState) -> dict:
     ext = _with_dates(state["extraction"])
     dups = rules.find_duplicates(ext, state.get("claim_history", []))
     abnormal = rules.abnormal_amount(ext)
-    risk = "high" if (dups or abnormal) else "low"
+    currency = rules.currency_issue(ext)
+    risk = "high" if (dups or abnormal or currency) else "low"
     return {
         "duplicate_of": dups,
         "abnormal_reason": abnormal,
+        "currency_reason": currency,
         "risk_level": risk,
         "audit": [f"fraud: risk={risk}"],
     }
@@ -155,6 +170,8 @@ def investigation_node(state: ClaimState) -> dict:
         parts.append(f"Duplicate of existing claim(s): {', '.join(state['duplicate_of'])}.")
     if state.get("abnormal_reason"):
         parts.append(state["abnormal_reason"])
+    if state.get("currency_reason"):
+        parts.append(state["currency_reason"])
     report = " ".join(parts) or "No investigation findings."
     return {"investigation_report": report, "audit": ["investigation: report written"]}
 
@@ -190,9 +207,13 @@ def recommendation_node(state: ClaimState) -> dict:
         "Abnormal amount": state.get("abnormal_reason") or "none",
     }
     llm_text = explain(facts)
-    source = "gemini" if llm_text else "template"
     if llm_text:
+        source = "gemini"
         explanation = llm_text
+    elif llm_enabled():
+        source = "template (Gemini was unavailable)"
+    else:
+        source = "template"
     return {
         "recommended_decision": decision.value,
         "explanation": explanation,

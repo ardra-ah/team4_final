@@ -108,7 +108,7 @@ def test_ocr_failure_escalates_after_retries(app, policy_store):
         "retry_backoff_s": 0.01,
     })
     assert state["final_decision"] == Decision.ESCALATED.value
-    assert "OCR failed after 3 attempts" in state["error"]
+    assert "We could not read this PDF after 3 tries" in state["error"]
     assert "ocr: failed after 3 attempts" in state["audit"]
     assert "__interrupt__" not in state, "escalated claims skip human review"
 
@@ -120,3 +120,33 @@ def test_audit_trail_records_each_stage(app, policy_store):
     stages = " | ".join(final["audit"])
     for stage in ("ocr:", "extract:", "policy:", "fraud:", "router:", "recommendation:", "human:"):
         assert stage in stages
+
+
+def test_gemini_text_is_used_when_enabled(app, policy_store, monkeypatch):
+    import agents.llm as llm
+
+    monkeypatch.setenv("LLM_ENABLED", "1")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("POLICY_EMBEDDINGS", "local")  # keep policy search offline in tests
+    monkeypatch.setattr(llm, "call_gemini", lambda prompt: "GEMINI TEXT")
+    label = next(l for l in LABELS if l.scenario == "clean")
+    state = _start(app, label, policy_store)
+    assert state["explanation"] == "GEMINI TEXT"
+    assert any("explanation: gemini" in line for line in state["audit"])
+
+
+def test_template_is_used_when_gemini_fails(app, policy_store, monkeypatch):
+    import agents.llm as llm
+
+    def broken(prompt):
+        raise RuntimeError("network down")
+
+    monkeypatch.setenv("LLM_ENABLED", "1")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("POLICY_EMBEDDINGS", "local")  # keep policy search offline in tests
+    monkeypatch.setattr(llm, "call_gemini", broken)
+    label = next(l for l in LABELS if l.scenario == "clean")
+    state = _start(app, label, policy_store)
+    assert state["explanation"]
+    assert "All coverage checks passed" in state["explanation"]
+    assert any("explanation: template" in line for line in state["audit"])

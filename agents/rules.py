@@ -40,9 +40,20 @@ def policy_check(extraction: dict) -> Tuple[bool, List[str]]:
     if extraction.get("procedure_code") in EXCLUDED_PROCEDURES:
         reasons.append(f"Procedure {extraction['procedure_code']} is an excluded cosmetic procedure.")
     claimed = extraction.get("claimed_amount")
+    billed = extraction.get("billed_amount")
     if claimed is not None and claimed > CLAIM_LIMIT_USD:
         reasons.append(f"Claimed amount {claimed:.2f} exceeds the {CLAIM_LIMIT_USD:.2f} limit.")
+    if claimed is not None and billed is not None and claimed > billed:
+        reasons.append(f"Claimed amount {claimed:.2f} is more than the billed amount {billed:.2f}.")
     return (len(reasons) == 0), reasons
+
+
+def currency_issue(extraction: dict) -> Optional[str]:
+    """Claims are only handled in USD. Anything else needs a person to check it."""
+    currency = (extraction.get("currency") or "USD").upper()
+    if currency != "USD":
+        return f"The claim amounts are in {currency}, not USD. A person needs to check the currency before any payment."
+    return None
 
 
 def find_duplicates(extraction: dict, history: List[dict]) -> List[str]:

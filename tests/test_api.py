@@ -115,3 +115,42 @@ def test_list_returns_all_runs(client):
     _upload(client, "policy_violation")
     runs = client.get("/claims").json()
     assert len(runs) == 2
+
+
+def test_claim_summary_and_processing_time_are_returned(client):
+    body = _upload(client, "missing_field").json()
+    assert "Missing fields: diagnosis_code" in body["claim_summary"]
+    assert "Claim" in body["claim_summary"]
+    assert "patient" not in body["claim_summary"].lower()
+    assert isinstance(body["processing_ms"], int) and body["processing_ms"] >= 0
+
+
+def test_documents_requested_claim_can_be_resubmitted_once(client):
+    original = _upload(client, "missing_field").json()
+    client.post(f"/claims/{original['run_id']}/decision", json={"decision": "PENDING_DOCUMENTS"})
+
+    r = client.post(
+        f"/claims/{original['run_id']}/resubmit",
+        files={"file": ("corrected.pdf", _pdf_bytes("clean"), "application/pdf")},
+    )
+    assert r.status_code == 201
+    child = r.json()
+    assert child["parent_run_id"] == original["run_id"]
+
+    parent = client.get(f"/claims/{original['run_id']}").json()
+    assert parent["resubmitted_as"] == child["run_id"]
+
+    again = client.post(
+        f"/claims/{original['run_id']}/resubmit",
+        files={"file": ("again.pdf", _pdf_bytes("clean"), "application/pdf")},
+    )
+    assert again.status_code == 409
+
+
+def test_resubmit_requires_documents_requested_status(client):
+    run_id = _upload(client, "clean").json()["run_id"]
+    r = client.post(
+        f"/claims/{run_id}/resubmit",
+        files={"file": ("x.pdf", _pdf_bytes("clean"), "application/pdf")},
+    )
+    assert r.status_code == 409
