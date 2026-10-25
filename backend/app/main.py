@@ -26,6 +26,21 @@ class DecisionIn(BaseModel):
     note: Optional[str] = ""
 
 
+# Member identifiers stay inside the server (duplicate checks need them) and are
+# removed from every response the API sends back to the screen or to other programs.
+HIDDEN_EXTRACTION_FIELDS = ("member_id", "member_name")
+
+
+def public_view(summary: dict) -> dict:
+    """Return a copy of a claim summary that is safe to send out of the API."""
+    data = dict(summary)
+    if isinstance(data.get("extraction"), dict):
+        data["extraction"] = {
+            k: v for k, v in data["extraction"].items() if k not in HIDDEN_EXTRACTION_FIELDS
+        }
+    return data
+
+
 def create_app(service: Optional[ClaimService] = None) -> FastAPI:
     app = FastAPI(title="Healthcare Claim Review API", version="0.3.0")
     svc = service or ClaimService(
@@ -47,7 +62,7 @@ def create_app(service: Optional[ClaimService] = None) -> FastAPI:
         if not content:
             raise HTTPException(status_code=422, detail="Uploaded file is empty.")
         try:
-            return svc.submit(file.filename, content)
+            return public_view(svc.submit(file.filename, content))
         except DuplicateUploadError as exc:
             raise HTTPException(status_code=409, detail=str(exc))
 
@@ -59,7 +74,7 @@ def create_app(service: Optional[ClaimService] = None) -> FastAPI:
         if not content:
             raise HTTPException(status_code=422, detail="Uploaded file is empty.")
         try:
-            return svc.resubmit(run_id, file.filename, content)
+            return public_view(svc.resubmit(run_id, file.filename, content))
         except KeyError:
             raise HTTPException(status_code=404, detail="Claim not found.")
         except ValueError as exc:
@@ -67,12 +82,12 @@ def create_app(service: Optional[ClaimService] = None) -> FastAPI:
 
     @app.get("/claims")
     def list_claims() -> List[dict]:
-        return svc.list_runs()
+        return [public_view(s) for s in svc.list_runs()]
 
     @app.get("/claims/{run_id}")
     def get_claim(run_id: str):
         try:
-            return svc.summary(run_id)
+            return public_view(svc.summary(run_id))
         except KeyError:
             raise HTTPException(status_code=404, detail="Claim not found.")
 
@@ -87,7 +102,7 @@ def create_app(service: Optional[ClaimService] = None) -> FastAPI:
     @app.post("/claims/{run_id}/decision")
     def decide(run_id: str, body: DecisionIn):
         try:
-            return svc.decide(run_id, body.decision, body.note or "")
+            return public_view(svc.decide(run_id, body.decision, body.note or ""))
         except KeyError:
             raise HTTPException(status_code=404, detail="Claim not found.")
         except ValueError as exc:

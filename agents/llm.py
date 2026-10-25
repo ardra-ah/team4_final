@@ -5,7 +5,7 @@ produced into a short plain-English explanation for the reviewer. If Gemini is o
 or fails after retries, the workflow keeps its template explanation.
 
 Enabled only when LLM_ENABLED=1 and GEMINI_API_KEY is set.
-GEMINI_MODEL picks the model (default: gemini-2.5-flash). Check the model name
+GEMINI_MODEL picks the model (default: gemini-3.8-flash). Check the model name
 shown in Google AI Studio if the default is not available for your key.
 """
 
@@ -38,7 +38,7 @@ def call_gemini(prompt: str) -> str:
     from google import genai
 
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
     response = client.models.generate_content(model=model, contents=prompt)
     text = (response.text or "").strip()
     if not text:
